@@ -1,0 +1,72 @@
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Data
+# =========================
+data/*
+!data/.gitkeep
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+env/
+
+# =========================
+# Airflow
+# =========================
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+logs/
+
+# =========================
+# PostgreSQL / databases
+# =========================
+*.sql
+*.dump
+*.sqlite
+*.sqlite3
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+*.log
+
+# =========================
+# Python / test
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Excel generated files
+# =========================
+*.xlsx
+*.xls

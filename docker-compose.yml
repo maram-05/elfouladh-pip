@@ -1,0 +1,82 @@
+services:
+  # --- Base de données "métier" (data warehouse ventes de billettes) ---
+  postgres:
+    image: postgres:16
+    container_name: elfouladh_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: elfouladh
+      POSTGRES_PASSWORD: elfouladh_pwd
+      POSTGRES_DB: ventes_billettes
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elfouladh -d ventes_billettes"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Base de données interne d'Airflow (métadonnées) ---
+  airflow-postgres:
+    image: postgres:16
+    container_name: elfouladh_airflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Airflow tout-en-un (webserver + scheduler + triggerer + dag processor
+  #     dans le même conteneur, via "airflow standalone") ---
+  airflow:
+    image: apache/airflow:3.3.0
+    container_name: elfouladh_airflow
+    restart: on-failure
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      _PIP_ADDITIONAL_REQUIREMENTS: "pandas openpyxl psycopg2-binary fpdf2 matplotlib anthropic"
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      REPORT_RECIPIENT: ${REPORT_RECIPIENT}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+    ports:
+      - "8082:8080"
+    command: standalone
+
+  # --- Tableau de bord indépendant (ventes + statut du pipeline) ---
+  dashboard:
+    build: ./dashboard
+    container_name: elfouladh_dashboard
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - airflow-postgres
+    ports:
+      - "8090:5000"
+    volumes:
+      - ./dashboard/documents:/app/documents
+      - ./data:/app/data
+
+volumes:
+  pgdata:
+  airflow_pgdata:
+  airflow_logs:

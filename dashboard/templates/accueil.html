@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Fouladh — Tableaux de bord</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F5F0; --panel:#FFFFFF; --line:#E4E0D6;
+    --ink:#1F2421; --muted:#6B6F6B;
+    --amber:#C97B2E; --steel:#5C7A8A;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:40px 20px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.18em;
+    color:var(--amber); text-transform:uppercase; margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--font-display); font-weight:700; font-size:30px;
+    margin:0 0 6px; text-align:center;
+  }
+  p.sub{ color:var(--muted); font-size:14px; margin:0 0 44px; text-align:center; }
+
+  .choices{ display:flex; gap:20px; flex-wrap:wrap; justify-content:center; max-width:760px; }
+  .choice{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:32px 30px; width:300px; text-align:left; text-decoration:none; color:var(--ink);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .choice:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(31,36,33,0.08); }
+  .choice .icon{
+    width:44px; height:44px; border-radius:8px; margin-bottom:18px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:18px; color:#fff;
+  }
+  .choice.ventes .icon{ background:var(--amber); }
+  .choice.production .icon{ background:var(--steel); }
+  .choice h2{ font-family:var(--font-display); font-size:19px; margin:0 0 8px; }
+  .choice p{ font-size:13px; color:var(--muted); margin:0; line-height:1.55; }
+  .choice .go{
+    font-family:var(--font-mono); font-size:12px; margin-top:18px;
+    color:var(--ink); opacity:.7;
+  }
+
+  footer{ margin-top:56px; font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+  <div class="eyebrow">ELF·01 — El Fouladh</div>
+  <h1>Tableaux de bord</h1>
+  <p class="sub">Société Tunisienne de Sidérurgie — Menzel Bourguiba</p>
+
+  <div class="choices">
+    <a class="choice ventes" href="/ventes">
+      <div class="icon">V</div>
+      <h2>Ventes</h2>
+      <p>Chiffre d'affaires, clients, articles et suivi du pipeline d'import des ventes de billettes.</p>
+      <div class="go">Ouvrir →</div>
+    </a>
+    <a class="choice production" href="/production">
+      <div class="icon">P</div>
+      <h2>Production</h2>
+      <p>Tonnage, rendement et arrêts machine par atelier (Aciérie, Laminoirs, Tréfilerie).</p>
+      <div class="go">Ouvrir →</div>
+    </a>
+  </div>
+
+  <footer>Pipeline El Fouladh — Airflow · PostgreSQL · Flask</footer>
+
+</body>
+</html>

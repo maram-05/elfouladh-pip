@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production — {{ atelier }} — El Fouladh</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/static/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #F7F5F0; --panel: #FFFFFF; --panel-line: #E4E0D6;
+    --steel: #5C7A8A; --amber: #C97B2E; --ok: #2E8B78; --fail: #C1443C;
+    --text: #1F2421; --text-muted: #6B6F6B;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 32px; border-bottom:1px solid var(--panel-line); background:var(--panel);
+  }
+  .brand{ display:flex; align-items:baseline; gap:14px; }
+  .brand .mark{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:0.14em;
+    color:var(--steel); border:1px solid var(--steel); padding:3px 8px; border-radius:2px;
+  }
+  .brand h1{ font-family:var(--font-display); font-weight:600; font-size:20px; margin:0; color:var(--text); }
+  .brand .sub{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+  .back-link{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); text-decoration:none; display:block; margin-bottom:2px; }
+  .back-link:hover{ color:var(--text); }
+  .status-strip{ display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:13px; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:var(--text-muted); box-shadow:0 0 0 3px rgba(0,0,0,0.04); }
+  .dot.ok{ background:var(--ok); box-shadow:0 0 0 3px rgba(46,139,120,0.16); }
+  .dot.fail{ background:var(--fail); box-shadow:0 0 0 3px rgba(193,68,60,0.16); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{box-shadow:0 0 0 3px rgba(193,68,60,0.16);} 50%{box-shadow:0 0 0 7px rgba(193,68,60,0.08);} }
+
+  main{ padding:28px 32px 60px; max-width:1180px; margin:0 auto; }
+  .section-label{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--steel); margin:34px 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  .section-label::after{ content:""; flex:1; height:1px; background:var(--panel-line); }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; }
+  .kpi{ background:var(--panel); border:1px solid var(--panel-line); border-radius:6px; padding:18px 20px; }
+  .kpi .label{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .kpi .value{ font-family:var(--font-mono); font-size:28px; font-weight:600; margin-top:8px; color:var(--text); }
+  .kpi.accent .value{ color:var(--steel); }
+
+  .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:14px; margin-top:14px; }
+  .panel{ background:var(--panel); border:1px solid var(--panel-line); border-radius:6px; padding:20px; }
+  .panel h3{ font-family:var(--font-display); font-size:14px; font-weight:600; margin:0 0 16px; color:var(--text); }
+  canvas{ max-height:260px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{
+    text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--text-muted); padding:0 0 10px; border-bottom:1px solid var(--panel-line);
+  }
+  td{ padding:9px 0; border-bottom:1px solid rgba(0,0,0,0.05); color:var(--text); }
+  td.mono, .val-mono{ font-family:var(--font-mono); }
+  .state-pill{ font-family:var(--font-mono); font-size:11px; padding:2px 8px; border-radius:20px; display:inline-block; }
+  .state-pill.success{ background:rgba(46,139,120,0.12); color:var(--ok); }
+  .state-pill.failed{ background:rgba(193,68,60,0.12); color:var(--fail); }
+  .state-pill.running, .state-pill.queued{ background:rgba(201,123,46,0.14); color:var(--amber); }
+  .empty{ color:var(--text-muted); font-family:var(--font-mono); font-size:13px; }
+
+  @media (max-width:840px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } .grid-2{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark">PROD</span>
+    <div>
+      <a class="back-link" href="/production">&larr; Autres ateliers</a>
+      <h1>{{ atelier }}</h1>
+      <div class="sub">Production — El Fouladh</div>
+    </div>
+  </div>
+  <div class="status-strip" id="topStatus">
+    <span class="dot" id="topDot"></span>
+    <span id="topStatusText">chargement…</span>
+  </div>
+</div>
+
+<main>
+
+  <div class="section-label">Résumé de production</div>
+  <div class="kpi-grid">
+    <div class="kpi accent">
+      <div class="label">Tonnage total</div>
+      <div class="value" id="kpiTonnes">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Taux de rebut moyen</div>
+      <div class="value" id="kpiRebut">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Arrêts cumulés</div>
+      <div class="value" id="kpiArret">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Produits suivis</div>
+      <div class="value" id="kpiProduits">—</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <h3>Tonnage par semaine (12 dernières semaines)</h3>
+      <canvas id="chartWeek"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Répartition par produit</h3>
+      <canvas id="chartProduct"></canvas>
+    </div>
+  </div>
+
+  <div class="section-label">État du pipeline</div>
+  <div class="grid-2">
+    <div class="panel">
+      <h3>Dernière exécution — etl_production</h3>
+      <table id="lastRunTable"><tbody></tbody></table>
+    </div>
+    <div class="panel">
+      <h3>Historique des 10 derniers runs</h3>
+      <table>
+        <thead><tr><th>Début</th><th>Type</th><th>Statut</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const ATELIER = {{ atelier|tojson }};
+
+const fmtInt = n => new Intl.NumberFormat('fr-TN').format(Math.round(n));
+const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}) : '—';
+const stateLabels = { success: 'Succès', failed: 'Échoué', running: 'En cours', queued: 'En file' };
+
+async function loadSummary(){
+  const s = await fetch(`/api/production-summary/${encodeURIComponent(ATELIER)}`).then(r => r.json());
+  document.getElementById('kpiTonnes').textContent = fmtInt(s.total_tonnes) + ' t';
+  document.getElementById('kpiRebut').textContent = Number(s.rebut_moyen).toFixed(1) + ' %';
+  document.getElementById('kpiArret').textContent = fmtInt(s.arret_total) + ' min';
+  document.getElementById('kpiProduits').textContent = s.nb_produits;
+
+  const byWeek = await fetch(`/api/production-by-week/${encodeURIComponent(ATELIER)}`).then(r => r.json());
+  new Chart(document.getElementById('chartWeek'), {
+    type: 'bar',
+    data: {
+      labels: byWeek.map(r => r.semaine),
+      datasets: [{ data: byWeek.map(r => r.tonnes), backgroundColor: '#5C7A8A', borderRadius: 2 }]
+    },
+    options: {
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { grid: { display:false }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:10} } },
+        y: { grid: { color:'#E4E0D6' }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:11} } }
+      }
+    }
+  });
+
+  const byProduct = await fetch(`/api/production-by-product/${encodeURIComponent(ATELIER)}`).then(r => r.json());
+  new Chart(document.getElementById('chartProduct'), {
+    type: 'bar',
+    data: {
+      labels: byProduct.map(r => r.produit),
+      datasets: [{ data: byProduct.map(r => r.tonnes), backgroundColor: '#C97B2E', borderRadius: 2 }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { grid: { color:'#E4E0D6' }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:10} } },
+        y: { grid: { display:false }, ticks: { color:'#1F2421', font:{family:'IBM Plex Sans', size:11} } }
+      }
+    }
+  });
+}
+
+async function loadPipeline(){
+  const data = await fetch('/api/production-pipeline-status').then(r => r.json());
+  const dot = document.getElementById('topDot');
+  const statusText = document.getElementById('topStatusText');
+  const last = data.last_run;
+
+  if (!last){
+    dot.className = 'dot';
+    statusText.textContent = 'aucun run trouvé';
+  } else {
+    dot.className = 'dot ' + (last.state === 'success' ? 'ok' : last.state === 'failed' ? 'fail' : '');
+    statusText.textContent = `pipeline ${stateLabels[last.state] || last.state} · ${fmtDate(last.start_date)}`;
+  }
+
+  const tbody = document.querySelector('#lastRunTable tbody');
+  tbody.innerHTML = '';
+  if (last){
+    const rows = [
+      ['Statut', `<span class="state-pill ${last.state}">${stateLabels[last.state] || last.state}</span>`],
+      ['Type', last.run_type],
+      ['Début', fmtDate(last.start_date)],
+      ['Fin', fmtDate(last.end_date)],
+      ['Run ID', `<span class="val-mono">${last.run_id}</span>`],
+    ];
+    rows.forEach(([k,v]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="mono" style="color:var(--text-muted)">${k}</td><td>${v}</td>`;
+      tbody.appendChild(tr);
+    });
+  } else {
+    tbody.innerHTML = '<tr><td class="empty">Aucune exécution enregistrée pour le moment.</td></tr>';
+  }
+
+  const historyBody = document.getElementById('historyBody');
+  historyBody.innerHTML = '';
+  data.history.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono">${fmtDate(r.start_date)}</td>
+      <td>${r.run_type}</td>
+      <td><span class="state-pill ${r.state}">${stateLabels[r.state] || r.state}</span></td>
+    `;
+    historyBody.appendChild(tr);
+  });
+  if (data.history.length === 0){
+    historyBody.innerHTML = '<tr><td class="empty" colspan="3">Aucun historique disponible.</td></tr>';
+  }
+}
+
+loadSummary().catch(e => console.error(e));
+loadPipeline().catch(e => console.error(e));
+setInterval(loadPipeline, 15000);
+</script>
+
+</body>
+</html>
