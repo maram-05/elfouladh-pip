@@ -35,6 +35,16 @@ SOURCE_FILES = {
 }
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Chaque section de vente a un "slug" propre pour les URLs, mappé vers la vraie
+# valeur enregistrée dans le fichier source, et un nom lisible pour l'affichage.
+SECTIONS_VENTES = {
+    "rond-a-beton": {"valeur": "SECTION RAB", "label": "Rond à béton"},
+    "fils": {"valeur": "TREFILES", "label": "Fils"},
+    "structures-metaliques": {"valeur": "STRUCTURE METALLIQUE", "label": "Structures métaliques"},
+    "rond-marchand-divers": {"valeur": "ROND MARCHAND & DIVERS", "label": "Rond marchand & divers"},
+    "billette": {"valeur": "BILLETTE", "label": "Billette"},
+}
+
 sales_engine = create_engine(SALES_DB_URL)
 airflow_engine = create_engine(AIRFLOW_DB_URL)
 
@@ -81,8 +91,15 @@ def accueil():
 
 
 @app.route("/ventes")
-def page_ventes():
-    return render_template("ventes.html")
+def page_choix_ventes():
+    return render_template("ventes_choix.html", sections=SECTIONS_VENTES)
+
+
+@app.route("/ventes/<slug>")
+def page_ventes_produit(slug):
+    if slug not in SECTIONS_VENTES:
+        abort(404)
+    return render_template("ventes_produit.html", slug=slug, label=SECTIONS_VENTES[slug]["label"])
 
 
 @app.route("/production")
@@ -97,59 +114,66 @@ def page_production(atelier):
     return render_template("production.html", atelier=atelier)
 
 
-# --- API Ventes ---
+# --- API Ventes (par produit / section) ---
 
-@app.route("/api/sales-summary")
-def sales_summary():
+def _valeur_section(slug):
+    if slug not in SECTIONS_VENTES:
+        abort(404)
+    return SECTIONS_VENTES[slug]["valeur"]
+
+
+@app.route("/api/sales-sections")
+def sales_sections():
+    return jsonify([{"slug": slug, "label": info["label"]} for slug, info in SECTIONS_VENTES.items()])
+
+
+@app.route("/api/sales-summary/<slug>")
+def sales_summary(slug):
+    valeur = _valeur_section(slug)
     with sales_engine.connect() as conn:
         row = conn.execute(text("""
             SELECT
-                COALESCE(SUM(prix * quantite), 0) AS total_ca,
+                COALESCE(SUM(v.prix * v.quantite), 0) AS total_ca,
                 COUNT(*) AS total_ventes,
-                (SELECT COUNT(*) FROM dim_clients) AS total_clients,
-                (SELECT COUNT(*) FROM dim_articles) AS total_articles
-            FROM ventes
-        """)).mappings().first()
+                COUNT(DISTINCT v.client_id) AS total_clients,
+                COUNT(DISTINCT v.code_article) AS total_articles
+            FROM ventes v
+            JOIN dim_articles a ON a.code_article = v.code_article
+            WHERE a.section = :section
+        """), {"section": valeur}).mappings().first()
     return jsonify(dict(row))
 
 
-@app.route("/api/sales-by-month")
-def sales_by_month():
+@app.route("/api/sales-by-month/<slug>")
+def sales_by_month(slug):
+    valeur = _valeur_section(slug)
     with sales_engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT to_char(date_trunc('month', date_vente), 'YYYY-MM') AS mois,
-                   SUM(prix * quantite) AS ca
-            FROM ventes
+            SELECT to_char(date_trunc('month', v.date_vente), 'YYYY-MM') AS mois,
+                   SUM(v.prix * v.quantite) AS ca
+            FROM ventes v
+            JOIN dim_articles a ON a.code_article = v.code_article
+            WHERE a.section = :section
             GROUP BY 1
             ORDER BY 1
-        """)).mappings().all()
+        """), {"section": valeur}).mappings().all()
     return jsonify([dict(r) for r in rows])
 
 
-@app.route("/api/top-clients")
-def top_clients():
+@app.route("/api/top-clients/<slug>")
+def top_clients(slug):
+    valeur = _valeur_section(slug)
     with sales_engine.connect() as conn:
         rows = conn.execute(text("""
             SELECT c.raison_sociale, SUM(v.prix * v.quantite) AS ca
             FROM ventes v
+            JOIN dim_articles a ON a.code_article = v.code_article
             JOIN dim_clients c ON c.client_id = v.client_id
+            WHERE a.section = :section
             GROUP BY c.raison_sociale
             ORDER BY ca DESC
             LIMIT 8
-        """)).mappings().all()
-    return jsonify([dict(r) for r in rows])
-
-
-@app.route("/api/sales-by-family")
-def sales_by_family():
-    with sales_engine.connect() as conn:
-        rows = conn.execute(text("""
-            SELECT a.famille, SUM(v.prix * v.quantite) AS ca
-            FROM ventes v
-            JOIN dim_articles a ON a.code_article = v.code_article
-            GROUP BY a.famille
-            ORDER BY ca DESC
-        """)).mappings().all()
+        """), {"section": valeur}).mappings().all()
     return jsonify([dict(r) for r in rows])
 
 

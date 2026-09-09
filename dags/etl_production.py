@@ -37,7 +37,7 @@ DB_URL = "postgresql+psycopg2://elfouladh:elfouladh_pwd@postgres:5432/ventes_bil
 
 # Une couleur fixe par atelier, réutilisée dans tous les graphiques du rapport
 COULEURS_ATELIER = {
-    "Aciérie": "#C97B2E",
+    "Aciérie": "#D9302A",
     "Laminoirs": "#5C7A8A",
     "Tréfilerie": "#2E8B78",
 }
@@ -157,7 +157,7 @@ def etl_production():
                        SUM(p.arret_minutes) AS arret_total
                 FROM production p
                 JOIN dim_ateliers a ON a.atelier_id = p.atelier_id
-                WHERE p.date_production >= CURRENT_DATE - INTERVAL '7 days'
+                WHERE p.date_production >= (SELECT MAX(date_production) FROM production) - INTERVAL '7 days'
                 GROUP BY a.nom
                 ORDER BY tonnes DESC
             """)).mappings().all()
@@ -169,7 +169,7 @@ def etl_production():
                        SUM(p.arret_minutes) AS arret_total
                 FROM production p
                 JOIN dim_ateliers a ON a.atelier_id = p.atelier_id
-                WHERE p.date_production >= CURRENT_DATE - INTERVAL '7 days'
+                WHERE p.date_production >= (SELECT MAX(date_production) FROM production) - INTERVAL '7 days'
                 GROUP BY a.nom, p.produit
                 ORDER BY a.nom, tonnes DESC
             """)).mappings().all()
@@ -235,43 +235,45 @@ Réponds uniquement avec les remarques, une par ligne, sans numérotation ni tir
 
         noms = [r.nom for r in par_atelier]
         couleurs = [couleur(n) for n in noms]
+        graphiques_disponibles = bool(par_atelier) and sum(float(r.tonnes) for r in par_atelier) > 0
 
-        # 1. Anneau : répartition du tonnage par atelier
-        plt.figure(figsize=(3.4, 3.4))
-        plt.pie(
-            [float(r.tonnes) for r in par_atelier], labels=noms, colors=couleurs,
-            autopct="%1.0f%%", pctdistance=0.8, startangle=90,
-            wedgeprops={"width": 0.38, "edgecolor": "white"},
-            textprops={"fontsize": 9, "color": "#1F2421"},
-        )
-        plt.title("Tonnage par atelier", fontsize=10, color="#1F2421")
-        plt.tight_layout()
-        plt.savefig(CHART_TONNAGE_PATH, dpi=160, transparent=True)
-        plt.close()
+        if graphiques_disponibles:
+            # 1. Anneau : répartition du tonnage par atelier
+            plt.figure(figsize=(3.4, 3.4))
+            plt.pie(
+                [max(float(r.tonnes), 0.01) for r in par_atelier], labels=noms, colors=couleurs,
+                autopct="%1.0f%%", pctdistance=0.8, startangle=90,
+                wedgeprops={"width": 0.38, "edgecolor": "white"},
+                textprops={"fontsize": 9, "color": "#1F2421"},
+            )
+            plt.title("Tonnage par atelier", fontsize=10, color="#1F2421")
+            plt.tight_layout()
+            plt.savefig(CHART_TONNAGE_PATH, dpi=160, transparent=True)
+            plt.close()
 
-        # 2. Barres horizontales : taux de rebut moyen par atelier
-        plt.figure(figsize=(3.8, 2.6))
-        plt.barh(noms, [float(r.rebut_moyen) for r in par_atelier], color=couleurs, height=0.5)
-        plt.xlabel("Taux de rebut moyen (%)", fontsize=9, color="#1F2421")
-        plt.gca().invert_yaxis()
-        plt.gca().spines[["top", "right"]].set_visible(False)
-        plt.tick_params(labelsize=9, colors="#1F2421")
-        plt.tight_layout()
-        plt.savefig(CHART_REBUT_PATH, dpi=160, transparent=True)
-        plt.close()
+            # 2. Barres horizontales : taux de rebut moyen par atelier
+            plt.figure(figsize=(3.8, 2.6))
+            plt.barh(noms, [float(r.rebut_moyen) for r in par_atelier], color=couleurs, height=0.5)
+            plt.xlabel("Taux de rebut moyen (%)", fontsize=9, color="#1F2421")
+            plt.gca().invert_yaxis()
+            plt.gca().spines[["top", "right"]].set_visible(False)
+            plt.tick_params(labelsize=9, colors="#1F2421")
+            plt.tight_layout()
+            plt.savefig(CHART_REBUT_PATH, dpi=160, transparent=True)
+            plt.close()
 
-        # 3. Anneau : répartition des arrêts machine par atelier
-        plt.figure(figsize=(3.4, 3.4))
-        plt.pie(
-            [max(float(r.arret_total), 0.01) for r in par_atelier], labels=noms, colors=couleurs,
-            autopct="%1.0f%%", pctdistance=0.8, startangle=90,
-            wedgeprops={"width": 0.38, "edgecolor": "white"},
-            textprops={"fontsize": 9, "color": "#1F2421"},
-        )
-        plt.title("Arrêts machine par atelier", fontsize=10, color="#1F2421")
-        plt.tight_layout()
-        plt.savefig(CHART_ARRET_PATH, dpi=160, transparent=True)
-        plt.close()
+            # 3. Anneau : répartition des arrêts machine par atelier
+            plt.figure(figsize=(3.4, 3.4))
+            plt.pie(
+                [max(float(r.arret_total), 0.01) for r in par_atelier], labels=noms, colors=couleurs,
+                autopct="%1.0f%%", pctdistance=0.8, startangle=90,
+                wedgeprops={"width": 0.38, "edgecolor": "white"},
+                textprops={"fontsize": 9, "color": "#1F2421"},
+            )
+            plt.title("Arrêts machine par atelier", fontsize=10, color="#1F2421")
+            plt.tight_layout()
+            plt.savefig(CHART_ARRET_PATH, dpi=160, transparent=True)
+            plt.close()
 
         # --- Construction du PDF ---
         pdf = FPDF()
@@ -281,6 +283,11 @@ Réponds uniquement avec les remarques, une par ligne, sans numérotation ni tir
         # Bandeau d'en-tête
         pdf.set_fill_color(29, 34, 38)  # graphite foncé (identique au tableau de bord)
         pdf.rect(0, 0, pdf.w, 32, style="F")
+
+        LOGO_PATH = "/opt/airflow/data/logo.png"
+        if os.path.exists(LOGO_PATH):
+            pdf.image(LOGO_PATH, x=pdf.w - pdf.r_margin - 20, y=6, w=20)
+
         pdf.set_text_color(255, 255, 255)
         pdf.set_xy(pdf.l_margin, 8)
         pdf.set_font("Helvetica", "B", 18)
@@ -298,7 +305,7 @@ Réponds uniquement avec les remarques, une par ligne, sans numérotation ni tir
         total_arret = sum(r.arret_total for r in par_atelier) if par_atelier else 0
         rebut_moyen_global = (sum(r.rebut_moyen for r in par_atelier) / len(par_atelier)) if par_atelier else 0
         kpis = [
-            ("Tonnage total", f"{total_tonnes:,.0f} t".replace(",", " "), "#C97B2E"),
+            ("Tonnage total", f"{total_tonnes:,.0f} t".replace(",", " "), "#D9302A"),
             ("Rebut moyen", f"{rebut_moyen_global:.1f} %", "#5C7A8A"),
             ("Arrets cumules", f"{total_arret} min", "#2E8B78"),
             ("Ateliers suivis", f"{len(par_atelier)}", "#8B9096"),
@@ -350,10 +357,18 @@ Réponds uniquement avec les remarques, une par ligne, sans numérotation ni tir
             pdf.add_page()
         chart_y = pdf.get_y() + 2
         chart_w = page_w / 3 - 4
-        pdf.image(CHART_TONNAGE_PATH, x=pdf.l_margin, y=chart_y, w=chart_w)
-        pdf.image(CHART_REBUT_PATH, x=pdf.l_margin + chart_w + 6, y=chart_y + 22, w=chart_w)
-        pdf.image(CHART_ARRET_PATH, x=pdf.l_margin + 2 * (chart_w + 6), y=chart_y, w=chart_w)
-        pdf.set_y(chart_y + chart_w + 10)
+        if graphiques_disponibles:
+            pdf.image(CHART_TONNAGE_PATH, x=pdf.l_margin, y=chart_y, w=chart_w)
+            pdf.image(CHART_REBUT_PATH, x=pdf.l_margin + chart_w + 6, y=chart_y + 22, w=chart_w)
+            pdf.image(CHART_ARRET_PATH, x=pdf.l_margin + 2 * (chart_w + 6), y=chart_y, w=chart_w)
+            pdf.set_y(chart_y + chart_w + 10)
+        else:
+            pdf.set_x(pdf.l_margin)
+            pdf.set_font("Helvetica", "I", 11)
+            pdf.set_text_color(107, 111, 107)
+            pdf.cell(0, 10, "Aucune donnee de production sur les 7 derniers jours.", ln=True)
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(4)
 
         # Remarques
         pdf.set_font("Helvetica", "B", 13)

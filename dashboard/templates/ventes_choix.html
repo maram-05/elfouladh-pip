@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ventes — Choix du produit</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F5F0; --panel:#FFFFFF; --line:#E4E0D6;
+    --ink:#1F2421; --muted:#6B6F6B; --brand:#D9302A;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:40px 20px;
+  }
+  .logo{ width:48px; height:48px; margin-bottom:14px; }
+  .back-link{
+    font-family:var(--font-mono); font-size:12px; color:var(--muted);
+    text-decoration:none; margin-bottom:24px;
+  }
+  .back-link:hover{ color:var(--ink); }
+  h1{ font-family:var(--font-display); font-weight:700; font-size:26px; margin:0 0 6px; text-align:center; }
+  p.sub{ color:var(--muted); font-size:14px; margin:0 0 36px; text-align:center; }
+
+  .produits{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:860px; }
+  .produit{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:26px 24px; width:220px; text-align:left; text-decoration:none; color:var(--ink);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .produit:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(31,36,33,0.08); }
+  .produit .tag{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--brand);
+    text-transform:uppercase; letter-spacing:.08em;
+  }
+  .produit h2{ font-family:var(--font-display); font-size:16px; margin:8px 0 0; }
+
+  .empty{ font-family:var(--font-mono); color:var(--muted); font-size:13px; text-align:center; }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:22px 24px; width:100%; max-width:640px; margin-top:36px; text-align:left;
+  }
+  .panel.source{ border-left:4px solid var(--brand); }
+  .panel h3{ font-family:var(--font-display); font-size:15px; font-weight:600; margin:0 0 10px; }
+  .panel p.note{ font-size:13px; color:var(--muted); margin:0 0 16px; line-height:1.55; }
+  .doc-upload{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:12px 14px; border:1.5px dashed var(--line); border-radius:6px; background:#FCFBF8;
+  }
+  .doc-upload input[type=file]{ font-family:var(--font-body); font-size:13px; flex:1; min-width:180px; }
+  .btn{
+    font-family:var(--font-mono); font-size:12.5px; font-weight:600;
+    background:var(--brand); color:#fff; border:none; border-radius:4px;
+    padding:9px 16px; cursor:pointer;
+  }
+  .btn:hover{ opacity:0.9; }
+  .btn-ghost{ background:none; border:1px solid var(--line); color:var(--muted); }
+  .btn-danger-text{
+    background:none; border:none; color:#C1443C; font-family:var(--font-mono);
+    font-size:12px; cursor:pointer; padding:4px 8px;
+  }
+  #sourceMsg, #uploadMsg{ font-family:var(--font-mono); font-size:12px; }
+  #sourceMsg.error, #uploadMsg.error{ color:#C1443C; }
+  #sourceMsg.ok, #uploadMsg.ok{ color:#2E8B78; }
+  .source-current{
+    font-family:var(--font-mono); font-size:12px; color:var(--muted);
+    margin-top:12px; padding-top:12px; border-top:1px solid var(--line);
+  }
+  .source-current b{ color:var(--ink); font-weight:600; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
+  th{
+    text-align:left; font-family:var(--font-mono); font-size:10px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--muted); padding:0 0 8px; border-bottom:1px solid var(--line);
+  }
+  td{ padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05); }
+  td.mono{ font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+  .doc-name{ display:flex; align-items:center; gap:8px; }
+  .doc-icon{
+    width:24px; height:24px; border-radius:4px; background:var(--brand); color:#fff;
+    font-family:var(--font-mono); font-size:8.5px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .doc-actions{ display:flex; gap:6px; justify-content:flex-end; }
+  .doc-actions a{ text-decoration:none; }
+</style>
+</head>
+<body>
+
+  <img class="logo" src="/static/logo.png" alt="El Fouladh">
+  <a class="back-link" href="/">&larr; Accueil</a>
+  <h1>Ventes</h1>
+  <p class="sub">Choisis le type de produit à afficher</p>
+
+  <div class="produits">
+    {% for slug, info in sections.items() %}
+    <a class="produit" href="/ventes/{{ slug }}">
+      <div class="tag">Produit</div>
+      <h2>{{ info.label }}</h2>
+    </a>
+    {% else %}
+    <p class="empty">Aucun produit trouvé — lance d'abord le pipeline etl_vente_billette.</p>
+    {% endfor %}
+  </div>
+
+  <div class="panel source">
+    <h3>Mettre à jour les données</h3>
+    <p class="note">
+      Remplace ici le fichier Excel que le pipeline lit réellement (<code>vente_billette.xlsx</code>) —
+      il couvre tous les types de produits en une seule fois. Les nouvelles données seront prises en
+      compte au <b>prochain lancement</b> du pipeline <code>etl_vente_billette</code> (automatique
+      chaque lundi à 6h, ou immédiatement si tu le déclenches manuellement dans Airflow après le dépôt).
+    </p>
+    <div class="doc-upload">
+      <input type="file" id="sourceInput" accept=".xlsx">
+      <button class="btn" id="sourceUploadBtn">Remplacer le fichier source</button>
+      <span id="sourceMsg"></span>
+    </div>
+    <div class="source-current" id="sourceCurrent">Chargement…</div>
+  </div>
+
+  <div class="panel">
+    <h3>Documents (archive)</h3>
+    <p class="note">Espace de stockage pour tes propres documents liés aux ventes. Déposer un fichier ici ne modifie pas les données du pipeline.</p>
+    <div class="doc-upload">
+      <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.csv,.docx,.png,.jpg,.jpeg">
+      <button class="btn" id="uploadBtn">Déposer le document</button>
+      <span id="uploadMsg"></span>
+    </div>
+    <table>
+      <thead><tr><th>Document</th><th>Taille</th><th>Déposé le</th><th></th></tr></thead>
+      <tbody id="docsBody"></tbody>
+    </table>
+  </div>
+
+<script>
+const fmtSize = bytes => {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' Ko';
+  return (bytes/(1024*1024)).toFixed(1) + ' Mo';
+};
+const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}) : '—';
+
+async function loadSourceInfo(){
+  const info = await fetch('/api/source/ventes').then(r => r.json());
+  const el = document.getElementById('sourceCurrent');
+  if (!info.exists){
+    el.textContent = 'Aucun fichier source trouvé pour le moment.';
+    return;
+  }
+  el.innerHTML = `Fichier actuel : <b>${info.filename}</b> — ${fmtSize(info.size)} — déposé le ${fmtDate(info.modified)}`;
+}
+
+document.getElementById('sourceUploadBtn').addEventListener('click', async () => {
+  const input = document.getElementById('sourceInput');
+  const msg = document.getElementById('sourceMsg');
+  if (!input.files.length){
+    msg.textContent = 'Choisis un fichier .xlsx d\'abord.';
+    msg.className = 'error';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  const res = await fetch('/api/source/ventes', { method: 'POST', body: formData });
+  if (res.ok){
+    msg.textContent = 'Fichier source remplacé.';
+    msg.className = 'ok';
+    input.value = '';
+    loadSourceInfo();
+  } else {
+    const err = await res.json();
+    msg.textContent = err.error || 'Échec du remplacement.';
+    msg.className = 'error';
+  }
+});
+
+async function loadDocuments(){
+  const docs = await fetch('/api/documents/ventes').then(r => r.json());
+  const body = document.getElementById('docsBody');
+  body.innerHTML = '';
+  if (docs.length === 0){
+    body.innerHTML = '<tr><td class="empty" colspan="4">Aucun document déposé pour le moment.</td></tr>';
+    return;
+  }
+  docs.forEach(doc => {
+    const ext = doc.name.split('.').pop().toUpperCase();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="doc-name"><span class="doc-icon">${ext}</span>${doc.name}</div></td>
+      <td class="mono">${fmtSize(doc.size)}</td>
+      <td class="mono">${fmtDate(doc.modified)}</td>
+      <td>
+        <div class="doc-actions">
+          <a href="/api/documents/ventes/${encodeURIComponent(doc.name)}"><button class="btn btn-ghost">Télécharger</button></a>
+          <button class="btn-danger-text" data-name="${doc.name}">Supprimer</button>
+        </div>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('.btn-danger-text').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Supprimer "${btn.dataset.name}" ?`)) return;
+      await fetch(`/api/documents/ventes/${encodeURIComponent(btn.dataset.name)}`, { method: 'DELETE' });
+      loadDocuments();
+    });
+  });
+}
+
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  const input = document.getElementById('fileInput');
+  const msg = document.getElementById('uploadMsg');
+  if (!input.files.length){
+    msg.textContent = 'Choisis un fichier d\'abord.';
+    msg.className = 'error';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  const res = await fetch('/api/documents/ventes', { method: 'POST', body: formData });
+  if (res.ok){
+    msg.textContent = 'Document déposé.';
+    msg.className = 'ok';
+    input.value = '';
+    loadDocuments();
+  } else {
+    const err = await res.json();
+    msg.textContent = err.error || 'Échec du dépôt.';
+    msg.className = 'error';
+  }
+});
+
+loadSourceInfo().catch(e => console.error(e));
+loadDocuments().catch(e => console.error(e));
+</script>
+
+</body>
+</html>

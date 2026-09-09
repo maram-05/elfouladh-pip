@@ -9,7 +9,7 @@
   :root{
     --bg:#F7F5F0; --panel:#FFFFFF; --line:#E4E0D6;
     --ink:#1F2421; --muted:#6B6F6B;
-    --amber:#C97B2E; --steel:#5C7A8A;
+    --amber:#D9302A; --steel:#5C7A8A; --brand:#D9302A; --brand-light:#F08E8E;
     --font-display:'Space Grotesk',sans-serif;
     --font-body:'IBM Plex Sans',sans-serif;
     --font-mono:'IBM Plex Mono',monospace;
@@ -20,9 +20,10 @@
     font-family:var(--font-body); display:flex; flex-direction:column;
     align-items:center; justify-content:center; padding:40px 20px;
   }
+  .logo{ width:64px; height:64px; margin-bottom:18px; }
   .eyebrow{
     font-family:var(--font-mono); font-size:12px; letter-spacing:.18em;
-    color:var(--amber); text-transform:uppercase; margin-bottom:14px;
+    color:var(--brand); text-transform:uppercase; margin-bottom:14px;
   }
   h1{
     font-family:var(--font-display); font-weight:700; font-size:30px;
@@ -34,9 +35,11 @@
   .choice{
     background:var(--panel); border:1px solid var(--line); border-radius:10px;
     padding:32px 30px; width:300px; text-align:left; text-decoration:none; color:var(--ink);
-    transition:transform .15s ease, box-shadow .15s ease;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
   .choice:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(31,36,33,0.08); }
+  .choice.ventes:hover{ border-color:var(--brand-light); }
+  .choice.production:hover{ border-color:var(--steel); }
   .choice .icon{
     width:44px; height:44px; border-radius:8px; margin-bottom:18px;
     display:flex; align-items:center; justify-content:center;
@@ -56,7 +59,8 @@
 </head>
 <body>
 
-  <div class="eyebrow">ELF·01 — El Fouladh</div>
+  <img class="logo" src="/static/logo.png" alt="El Fouladh">
+  <div class="eyebrow">El Fouladh</div>
   <h1>Tableaux de bord</h1>
   <p class="sub">Société Tunisienne de Sidérurgie — Menzel Bourguiba</p>
 
@@ -64,7 +68,7 @@
     <a class="choice ventes" href="/ventes">
       <div class="icon">V</div>
       <h2>Ventes</h2>
-      <p>Chiffre d'affaires, clients, articles et suivi du pipeline d'import des ventes de billettes.</p>
+      <p>Choisis un type de produit (rond à béton, fils, structures métaliques...) pour voir son chiffre d'affaires et ses clients.</p>
       <div class="go">Ouvrir →</div>
     </a>
     <a class="choice production" href="/production">

@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Production — {{ atelier }} — El Fouladh</title>
+<title>Ventes — {{ label }} — El Fouladh</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/static/chart.umd.min.js"></script>
 <style>
   :root{
     --bg: #F7F5F0; --panel: #FFFFFF; --panel-line: #E4E0D6;
-    --steel: #5C7A8A; --amber: #D9302A; --ok: #2E8B78; --fail: #C1443C;
+    --steel: #5C7A8A; --brand: #D9302A; --ok: #2E8B78; --fail: #C1443C;
     --text: #1F2421; --text-muted: #6B6F6B;
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'IBM Plex Sans', sans-serif;
@@ -44,7 +44,7 @@
   .kpi{ background:var(--panel); border:1px solid var(--panel-line); border-radius:6px; padding:18px 20px; }
   .kpi .label{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; }
   .kpi .value{ font-family:var(--font-mono); font-size:28px; font-weight:600; margin-top:8px; color:var(--text); }
-  .kpi.accent .value{ color:var(--steel); }
+  .kpi.accent .value{ color:var(--brand); }
 
   .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:14px; margin-top:14px; }
   .panel{ background:var(--panel); border:1px solid var(--panel-line); border-radius:6px; padding:20px; }
@@ -61,7 +61,7 @@
   .state-pill{ font-family:var(--font-mono); font-size:11px; padding:2px 8px; border-radius:20px; display:inline-block; }
   .state-pill.success{ background:rgba(46,139,120,0.12); color:var(--ok); }
   .state-pill.failed{ background:rgba(193,68,60,0.12); color:var(--fail); }
-  .state-pill.running, .state-pill.queued{ background:rgba(201,123,46,0.14); color:var(--amber); }
+  .state-pill.running, .state-pill.queued{ background:rgba(217,48,42,0.14); color:var(--brand); }
   .empty{ color:var(--text-muted); font-family:var(--font-mono); font-size:13px; }
 
   @media (max-width:840px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } .grid-2{ grid-template-columns:1fr; } }
@@ -73,9 +73,9 @@
   <div class="brand">
     <img class="logo" src="/static/logo.png" alt="El Fouladh">
     <div>
-      <a class="back-link" href="/production">&larr; Autres ateliers</a>
-      <h1>{{ atelier }}</h1>
-      <div class="sub">Production — El Fouladh</div>
+      <a class="back-link" href="/ventes">&larr; Autres produits</a>
+      <h1>{{ label }}</h1>
+      <div class="sub">Ventes — El Fouladh</div>
     </div>
   </div>
   <div class="status-strip" id="topStatus">
@@ -86,41 +86,41 @@
 
 <main>
 
-  <div class="section-label">Résumé de production</div>
+  <div class="section-label">Résumé des ventes</div>
   <div class="kpi-grid">
     <div class="kpi accent">
-      <div class="label">Tonnage total</div>
-      <div class="value" id="kpiTonnes">—</div>
+      <div class="label">Chiffre d'affaires</div>
+      <div class="value" id="kpiCa">—</div>
     </div>
     <div class="kpi">
-      <div class="label">Taux de rebut moyen</div>
-      <div class="value" id="kpiRebut">—</div>
+      <div class="label">Ventes enregistrées</div>
+      <div class="value" id="kpiVentes">—</div>
     </div>
     <div class="kpi">
-      <div class="label">Arrêts cumulés</div>
-      <div class="value" id="kpiArret">—</div>
+      <div class="label">Clients</div>
+      <div class="value" id="kpiClients">—</div>
     </div>
     <div class="kpi">
-      <div class="label">Produits suivis</div>
-      <div class="value" id="kpiProduits">—</div>
+      <div class="label">Articles</div>
+      <div class="value" id="kpiArticles">—</div>
     </div>
   </div>
 
   <div class="grid-2">
     <div class="panel">
-      <h3>Tonnage par semaine (12 dernières semaines)</h3>
-      <canvas id="chartWeek"></canvas>
+      <h3>Chiffre d'affaires par mois</h3>
+      <canvas id="chartMonth"></canvas>
     </div>
     <div class="panel">
-      <h3>Répartition par produit</h3>
-      <canvas id="chartProduct"></canvas>
+      <h3>Top clients</h3>
+      <canvas id="chartClients"></canvas>
     </div>
   </div>
 
   <div class="section-label">État du pipeline</div>
   <div class="grid-2">
     <div class="panel">
-      <h3>Dernière exécution — etl_production</h3>
+      <h3>Dernière exécution — etl_vente_billette</h3>
       <table id="lastRunTable"><tbody></tbody></table>
     </div>
     <div class="panel">
@@ -135,41 +135,42 @@
 </main>
 
 <script>
-const ATELIER = {{ atelier|tojson }};
+const SLUG = {{ slug|tojson }};
 
-const fmtInt = n => new Intl.NumberFormat('fr-TN').format(Math.round(n));
+const fmtCa = n => new Intl.NumberFormat('fr-TN', {maximumFractionDigits:0}).format(n) + ' DT';
+const fmtInt = n => new Intl.NumberFormat('fr-TN').format(n);
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}) : '—';
 const stateLabels = { success: 'Succès', failed: 'Échoué', running: 'En cours', queued: 'En file' };
 
-async function loadSummary(){
-  const s = await fetch(`/api/production-summary/${encodeURIComponent(ATELIER)}`).then(r => r.json());
-  document.getElementById('kpiTonnes').textContent = fmtInt(s.total_tonnes) + ' t';
-  document.getElementById('kpiRebut').textContent = Number(s.rebut_moyen).toFixed(1) + ' %';
-  document.getElementById('kpiArret').textContent = fmtInt(s.arret_total) + ' min';
-  document.getElementById('kpiProduits').textContent = s.nb_produits;
+async function loadSales(){
+  const summary = await fetch(`/api/sales-summary/${SLUG}`).then(r => r.json());
+  document.getElementById('kpiCa').textContent = fmtCa(summary.total_ca);
+  document.getElementById('kpiVentes').textContent = fmtInt(summary.total_ventes);
+  document.getElementById('kpiClients').textContent = fmtInt(summary.total_clients);
+  document.getElementById('kpiArticles').textContent = fmtInt(summary.total_articles);
 
-  const byWeek = await fetch(`/api/production-by-week/${encodeURIComponent(ATELIER)}`).then(r => r.json());
-  new Chart(document.getElementById('chartWeek'), {
+  const byMonth = await fetch(`/api/sales-by-month/${SLUG}`).then(r => r.json());
+  new Chart(document.getElementById('chartMonth'), {
     type: 'bar',
     data: {
-      labels: byWeek.map(r => r.semaine),
-      datasets: [{ data: byWeek.map(r => r.tonnes), backgroundColor: '#5C7A8A', borderRadius: 2 }]
+      labels: byMonth.map(r => r.mois),
+      datasets: [{ data: byMonth.map(r => r.ca), backgroundColor: '#D9302A', borderRadius: 2 }]
     },
     options: {
       plugins: { legend: { display:false } },
       scales: {
-        x: { grid: { display:false }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:10} } },
+        x: { grid: { display:false }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:11} } },
         y: { grid: { color:'#E4E0D6' }, ticks: { color:'#6B6F6B', font:{family:'IBM Plex Mono', size:11} } }
       }
     }
   });
 
-  const byProduct = await fetch(`/api/production-by-product/${encodeURIComponent(ATELIER)}`).then(r => r.json());
-  new Chart(document.getElementById('chartProduct'), {
+  const topClients = await fetch(`/api/top-clients/${SLUG}`).then(r => r.json());
+  new Chart(document.getElementById('chartClients'), {
     type: 'bar',
     data: {
-      labels: byProduct.map(r => r.produit),
-      datasets: [{ data: byProduct.map(r => r.tonnes), backgroundColor: '#D9302A', borderRadius: 2 }]
+      labels: topClients.map(r => r.raison_sociale.length > 18 ? r.raison_sociale.slice(0,18)+'…' : r.raison_sociale),
+      datasets: [{ data: topClients.map(r => r.ca), backgroundColor: '#5C7A8A', borderRadius: 2 }]
     },
     options: {
       indexAxis: 'y',
@@ -183,7 +184,7 @@ async function loadSummary(){
 }
 
 async function loadPipeline(){
-  const data = await fetch('/api/production-pipeline-status').then(r => r.json());
+  const data = await fetch('/api/pipeline-status').then(r => r.json());
   const dot = document.getElementById('topDot');
   const statusText = document.getElementById('topStatusText');
   const last = data.last_run;
@@ -231,7 +232,7 @@ async function loadPipeline(){
   }
 }
 
-loadSummary().catch(e => console.error(e));
+loadSales().catch(e => console.error(e));
 loadPipeline().catch(e => console.error(e));
 setInterval(loadPipeline, 15000);
 </script>
